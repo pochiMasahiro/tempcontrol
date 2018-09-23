@@ -33,63 +33,105 @@
 #include "ether_prog.h"
 #endif
 
+#ifndef INCLUDED_SIGNAL_
+#define INCLUDED_SIGNAL_
+#include <signal.h>
+#endif
+
+void exit_handler(int);
+volatile int exit_flag = 0;
+
+void exit_handler(int signo)
+{
+  exit_flag = 1;
+}
+
+int prologix_initialize(int sock, int addr);
+
+double get_resi_keithley2000(int sock, int addr);
+
+#define B_param 3930.0
+#define B_const 10.0e3
+double thermistor_conversion(double);
+
+int prologix_initialize(int sock, int addr)
+{
+  char ad[16];
+  sprintf(ad, "++addr %d", addr);
+
+  etherwrite(sock, "++mode 1");
+  etherwrite(sock, "++auto 1");
+  etherwrite(sock, ad);
+  etherwrite(sock, "++eos 1");
+  etherwrite(sock, "++eot_enable 1");
+  etherwrite(sock, "++savecfg 0");
+  return 0;
+}
+
+double thermistor_conversion(double resistance)
+{
+  return 0.0;
+}
+
+double get_resi_keithley2000(int sock, int addr)
+{
+  char ad[16];
+  double data;
+
+  sprintf(ad, "++addr %d", addr);
+  etherwrite(sock, ad);
+  etherwrite(sock, ":MEAS:RES?");
+  data = etherreadd(sock);
+
+  return data;
+}
+
 int main(int argc, char *argv[]){
-    
-    int	i;
-    double gascelltemp = 80.0, vcseltemp = 70.0;
-    double curr_gascell_temp, curr_vcseltemp;
-    int GASCELL_CONTROL, VCSEL_CONTROL;
+  int	i;
+  double gascelltemp = 80.0, vcseltemp = 70.0;
+  double curr_gascell_temp, curr_vcseltemp;
+  int GASCELL_CONTROL, VCSEL_CONTROL;
 
-	for(i=1;i<argc;i++){
-        if(*argv[i]=='-' && strlen(argv[i])>1 ){
-            switch(*(argv[i]+1))
-            {
-            case 'v':
-                sscanf(argv[i], "-v%lf", &vcseltemp);
-                break;
-            case 'g':
-                sscanf(argv[i], "-g%lf", &gascelltemp);
-                break;
-            default :
-                printf("Undefined parameter.\n");
-            }
-        }
+  for(i=1;i<argc;i++){
+    if(*argv[i]=='-' && strlen(argv[i])>1 ){
+      switch(*(argv[i]+1))
+      {
+        case 'v':
+          sscanf(argv[i], "-v%lf", &vcseltemp);
+          break;
+        case 'g':
+          sscanf(argv[i], "-g%lf", &gascelltemp);
+          break;
+        default :
+          printf("Undefined parameter.\n");
+      }
     }
+  }
 
-    printf("VCSEL target temperature: %lf.\n", vcseltemp);
-    printf("Gas Cell target temperature: %lf.\n", gascelltemp);
+  printf("VCSEL target temperature: %lf.\n", vcseltemp);
+  printf("Gas Cell target temperature: %lf.\n", gascelltemp);
 
 
-    /* Initial setting */
-    GASCELL_CONTROL = etheropen(Ether_GasCell_TEMP, Prologix_Ether_PORT);
-    VCSEL_CONTROL = etheropen(Ether_VCSEL_TEMP, Prologix_Ether_PORT);
-    etherwrite(GASCELL_CONTROL, "++mode 1");
-    etherwrite(GASCELL_CONTROL, "++auto 1");
-    etherwrite(GASCELL_CONTROL, "++addr 1");
-    etherwrite(GASCELL_CONTROL, "++eos 1");
-    etherwrite(GASCELL_CONTROL, "++eot_enable 1");
-    etherwrite(GASCELL_CONTROL, "++savecfg 0");
-    etherwrite(VCSEL_CONTROL, "++mode 1");
-    etherwrite(VCSEL_CONTROL, "++auto 1");
-    etherwrite(VCSEL_CONTROL, "++addr 1");
-    etherwrite(VCSEL_CONTROL, "++eos 1");
-    etherwrite(VCSEL_CONTROL, "++eot_enable 1");
-    etherwrite(VCSEL_CONTROL, "++savecfg 0");
+  /* Initialize setting  */
+  GASCELL_CONTROL = etheropen(Ether_GasCell_TEMP, Prologix_Ether_PORT);
+  VCSEL_CONTROL = etheropen(Ether_VCSEL_TEMP, Prologix_Ether_PORT);
+  if (prologix_initialize(GASCELL_CONTROL, 1) != 0)
+  {
+    printf("Initialize error");
+    exit(1);
+  }
 
-    etherwrite(GASCELL_CONTROL, "++addr 1");
-    etherwrite(GASCELL_CONTROL, ":MEAS:RES?");
-    curr_gascell_temp = etherreadd(GASCELL_CONTROL);
+  if (prologix_initialize(VCSEL_CONTROL, 1) != 0)
+  {
+    printf("Initialize error");
+    exit(1);
+  }
 
-    printf("Current gascell temp: %E\n", curr_gascell_temp);
+  etherwrite(GASCELL_CONTROL, "++addr 1");
+  etherwrite(GASCELL_CONTROL, ":MEAS:RES?");
+  curr_gascell_temp = etherreadd(GASCELL_CONTROL);
 
-    /*
-    double svol, vol;
+  printf("Current gascell temp: %E\n", curr_gascell_temp);
 
-    etherwrite(PDC_E1,"SOI?");
-    etherwrite(PDC_E1,"++read eoi");
-    svol = etherreadd(PDC_E1);
-    printf("%E\n", svol);
-    */
-
-    return 0;
+  return 0;
 }
