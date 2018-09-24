@@ -51,7 +51,8 @@ int prologix_initialize(int sock, int addr);
 double get_resi_keithley2000(int sock, int addr);
 
 #define B_param 3930.0
-#define B_const 10.0e3
+#define R0 10.0e3
+#define T0
 double thermistor_conversion(double);
 
 int prologix_initialize(int sock, int addr)
@@ -70,7 +71,10 @@ int prologix_initialize(int sock, int addr)
 
 double thermistor_conversion(double resistance)
 {
-  return 0.0;
+  double temp;
+  temp = 1/B_param * log(resistance/R0) + 1/T0;
+
+  return 1 / temp;
 }
 
 double get_resi_keithley2000(int sock, int addr)
@@ -132,6 +136,8 @@ int main(int argc, char *argv[]){
   curr_gascell_temp = etherreadd(GASCELL_CONTROL);
 
   printf("Current gascell temp: %E\n", curr_gascell_temp);
+
+  while(
 
   return 0;
 }
