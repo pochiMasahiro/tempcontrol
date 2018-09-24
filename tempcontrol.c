@@ -38,6 +38,16 @@
 #include <signal.h>
 #endif
 
+#ifndef INCLUDED_TIME_
+#define INCLUDED_TIME_
+#include <time.h>
+#endif
+
+#ifndef INCLUDED_MATH_
+#define INCLUDED_MATH_
+#include <math.h>
+#endif
+
 void exit_handler(int);
 volatile int exit_flag = 0;
 
@@ -52,7 +62,7 @@ double get_resi_keithley2000(int sock, int addr);
 
 #define B_param 3930.0
 #define R0 10.0e3
-#define T0
+#define T0 25.0
 double thermistor_conversion(double);
 
 int prologix_initialize(int sock, int addr)
@@ -96,6 +106,12 @@ int main(int argc, char *argv[]){
   double curr_gascell_temp, curr_vcseltemp;
   int GASCELL_CONTROL, VCSEL_CONTROL;
 
+  /* nano sec */
+  long t_start, t_elapsed;
+  long t_interval = 1000000000;
+  struct timespec ts;
+  struct timespec wait;
+
   for(i=1;i<argc;i++){
     if(*argv[i]=='-' && strlen(argv[i])>1 ){
       switch(*(argv[i]+1))
@@ -137,7 +153,28 @@ int main(int argc, char *argv[]){
 
   printf("Current gascell temp: %E\n", curr_gascell_temp);
 
-  while(
+  while(exit_flag == 0)
+  {
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t_start = ts.tv_nsec;
+    
+    curr_gascell_temp = thermistor_conversion(get_resi_keithley2000(GASCELL_CONTROL, 1));
+    printf("Current gas cell temperature: %lf\n", curr_gascell_temp);
+    curr_vcseltemp = thermistor_conversion(get_resi_keithley2000(VCSEL_CONTROL, 5));
+    printf("Current VCSEL temperature: %lf\n", curr_vcseltemp);
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t_elapsed = ts.tv_nsec - t_start;
+    if (t_interval - t_elapsed < 0)
+    {
+      printf("Interval too fast!!\n");
+    }
+    else
+    {
+      wait.tv_nsec = t_interval - t_elapsed;
+      nanosleep(&wait, NULL);
+    }
+  }
 
   return 0;
 }

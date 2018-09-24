@@ -4,7 +4,7 @@
 #endif
 
 #ifndef INCLUDED_STDLIB_
-#define INCLUDED_MATH_
+#define INCLUDED_STDLIB_
 #include <stdlib.h>
 #endif
 
